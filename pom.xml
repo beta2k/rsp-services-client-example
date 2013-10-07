@@ -19,7 +19,7 @@
 
 	<groupId>polimi.deib</groupId>
 	<artifactId>rsp-services-client-example</artifactId>
-	<version>0.3.2.2</version>
+	<version>0.3.2.3</version>
 	<packaging>jar</packaging>
 
 	<name>rsp-service4csparql-client-example</name>
