@@ -32,9 +32,9 @@
 			<url>http://maven.restlet.org</url>
 		</repository>
 		<repository>
-			<id>csparql-client</id>
-			<name>Csparql client repository</name>
-			<url>file://${project.basedir}/repo</url>
+			<id>streamreasoning_repository</id>
+			<name>Csparql server repository</name>
+			<url>http://streamreasoning.org/maven/</url>
 			<layout>default</layout>
 		</repository>
 	</repositories>
@@ -56,7 +56,7 @@
 		<dependency>
 			<groupId>polimi.deib</groupId>
 			<artifactId>rsp-services-api</artifactId>
-			<version>0.3.2.2</version>
+			<version>0.3.2.3</version>
 		</dependency>
 		<dependency>
 			<groupId>ch.qos.logback</groupId>

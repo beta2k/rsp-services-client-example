@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013 DEIB - Politecnico di Milano
+ * Copyright 2013 Marco Balduini, Emanuele Della Valle
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,6 +12,11 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * 
+ * Acknowledgements:
+ * 
+ * This work was partially supported by the European project LarKC (FP7-215535) 
+ * and by the European project MODAClouds (FP7-318484)
  ******************************************************************************/
 package polimi.deib.rsp_service4csparql_client_example.streamer;
 
@@ -19,6 +24,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import polimi.deib.csparql_rest_api.Csparql_Remote_API;
+import polimi.deib.csparql_rest_api.exception.ServerErrorException;
+import polimi.deib.csparql_rest_api.exception.StreamErrorException;
 
 import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
@@ -61,13 +68,16 @@ public class Four_Violations_DemoStreamer implements Runnable {
 			i++;
 			m.add(new ResourceImpl(generalIRI + "violation" + i), new PropertyImpl("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"), new ResourceImpl("http://www.modaclouds.eu/monitoring#ViolationEvent"));
 			i++;
-			
-			csparqlAPI.feedStream(streamName, m);
 
 			try {
+				csparqlAPI.feedStream(streamName, m);
 				Thread.sleep(sleepTime);
 			} catch (InterruptedException e) {
 				logger.error("Error while launching the sleep operation", e);
+			} catch (StreamErrorException e) {
+				logger.error("StreamErrorException Occurred", e);
+			} catch (ServerErrorException e) {
+				logger.error("ServerErrorException Occurred", e);
 			}
 
 		}

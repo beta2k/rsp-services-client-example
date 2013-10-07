@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2013 DEIB - Politecnico di Milano
+ * Copyright 2013 Marco Balduini, Emanuele Della Valle
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,6 +12,11 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * 
+ * Acknowledgements:
+ * 
+ * This work was partially supported by the European project LarKC (FP7-215535) 
+ * and by the European project MODAClouds (FP7-318484)
  ******************************************************************************/
 package polimi.deib.rsp_service4csparql_client_example.streamer;
 /*
@@ -32,6 +37,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import polimi.deib.csparql_rest_api.Csparql_Remote_API;
+import polimi.deib.csparql_rest_api.exception.ServerErrorException;
+import polimi.deib.csparql_rest_api.exception.StreamErrorException;
 
 import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
@@ -48,7 +55,7 @@ public class Inference_Streamer implements Runnable {
 
 	private boolean keepRunning = false;
 	private String quadrupleIRI = "http://streamreasoning.org#";
-	
+
 	private Csparql_Remote_API csparqlAPI;
 	private String streamName;
 
@@ -68,23 +75,26 @@ public class Inference_Streamer implements Runnable {
 
 		Random randomGenerator = new Random();
 		Model m;
-		
+
 		while (keepRunning) {
-						
+
 			m = ModelFactory.createDefaultModel();
-			
+
 			int x = randomGenerator.nextInt(1000);
 			System.out.println("Streamed " + x + " at " + System.currentTimeMillis()); 
-			
+
 			Statement s = new StatementImpl(new ResourceImpl(quadrupleIRI+"t" + x), new PropertyImpl(quadrupleIRI+"mum"), new ResourceImpl(quadrupleIRI+"m"));
 			m.add(s);
-			
-			csparqlAPI.feedStream(streamName, m);
-		
-			try {
+
+			try{
+				csparqlAPI.feedStream(streamName, m);
 				Thread.sleep(6000);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
+			} catch (StreamErrorException e) {
+				logger.error("StreamErrorException Occurred", e);
+			} catch (ServerErrorException e) {
+				logger.error("ServerErrorException Occurred", e);
 			}
 		}
 	}
