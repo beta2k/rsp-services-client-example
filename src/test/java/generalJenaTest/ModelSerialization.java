@@ -37,12 +37,14 @@ import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
 import com.hp.hpl.jena.rdf.model.impl.PropertyImpl;
 import com.hp.hpl.jena.rdf.model.impl.ResourceImpl;
+import com.hp.hpl.jena.vocabulary.RDF;
+import com.hp.hpl.jena.vocabulary.RDFS;
 
 public class ModelSerialization {
 
 	public static void main(String[] args) {
 
-		String baseURI = "http://www.streamreasoning.org/ontologies/2013/9/hands-on-ontology.owl#";
+		String baseURI = "http://streamreasoning.org/ontologies/sr4ld2013-onto#";
 		Model m = ModelFactory.createDefaultModel();
 
 //		m.add(new ResourceImpl(baseURI + "po"), new PropertyImpl(baseURI + "where"), new ResourceImpl(baseURI + "r"));
@@ -51,7 +53,16 @@ public class ModelSerialization {
 //		m.add(new ResourceImpl(baseURI + "po3"), new PropertyImpl(baseURI + "discusses"), new ResourceImpl(baseURI + "po2"));
 //		m.add(new ResourceImpl(baseURI + "po4"), new PropertyImpl(baseURI + "discusses"), new ResourceImpl(baseURI + "po3"));
 
-		m.add(new ResourceImpl(baseURI + "postA0"), new PropertyImpl(baseURI + "where"), new ResourceImpl(baseURI + "roomA"));
+		m.add(new ResourceImpl(baseURI + "Alice"), RDF.type, new ResourceImpl(baseURI + "Person"));
+		m.add(new ResourceImpl(baseURI + "Bob"), RDF.type, new ResourceImpl(baseURI + "Person"));
+		m.add(new ResourceImpl(baseURI + "Carl"), RDF.type, new ResourceImpl(baseURI + "Person"));
+		m.add(new ResourceImpl(baseURI + "David"), RDF.type, new ResourceImpl(baseURI + "Person"));
+		m.add(new ResourceImpl(baseURI + "Elen"), RDF.type, new ResourceImpl(baseURI + "Person"));
+		m.add(new ResourceImpl(baseURI + "RedRoom"), RDF.type, new ResourceImpl(baseURI + "Room"));
+		m.add(new ResourceImpl(baseURI + "BlueRoom"), RDF.type, new ResourceImpl(baseURI + "Room"));
+		m.add(new ResourceImpl(baseURI + "RedRoom"), new PropertyImpl(baseURI + "isConnectedTo"), new ResourceImpl(baseURI + "BlueRoom"));
+		m.add(new ResourceImpl(baseURI + "RedSensor"), RDF.type, new ResourceImpl(baseURI + "Sensor"));
+		m.add(new ResourceImpl(baseURI + "BlueSensor"), RDF.type, new ResourceImpl(baseURI + "Sensor"));
 
 		StringWriter w = new StringWriter();
 
