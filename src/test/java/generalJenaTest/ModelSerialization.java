@@ -33,8 +33,10 @@ import com.hp.hpl.jena.query.QueryFactory;
 import com.hp.hpl.jena.query.ResultSet;
 import com.hp.hpl.jena.query.ResultSetFormatter;
 import com.hp.hpl.jena.query.Syntax;
+import com.hp.hpl.jena.rdf.model.AnonId;
 import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
+import com.hp.hpl.jena.rdf.model.RDFNode;
 import com.hp.hpl.jena.rdf.model.impl.PropertyImpl;
 import com.hp.hpl.jena.rdf.model.impl.ResourceImpl;
 import com.hp.hpl.jena.vocabulary.RDF;
@@ -47,22 +49,23 @@ public class ModelSerialization {
 		String baseURI = "http://streamreasoning.org/ontologies/sr4ld2013-onto#";
 		Model m = ModelFactory.createDefaultModel();
 
-//		m.add(new ResourceImpl(baseURI + "po"), new PropertyImpl(baseURI + "where"), new ResourceImpl(baseURI + "r"));
-//		m.add(new ResourceImpl(baseURI + "po1"), new PropertyImpl(baseURI + "discusses"), new ResourceImpl(baseURI + "po"));
-//		m.add(new ResourceImpl(baseURI + "po2"), new PropertyImpl(baseURI + "discusses"), new ResourceImpl(baseURI + "po1"));
+		AnonId a = new AnonId();
+		m.add(new ResourceImpl(baseURI + "Bob"), new PropertyImpl(baseURI + "posts"), new ResourceImpl(a));
+		m.add(new ResourceImpl(a), new PropertyImpl(baseURI + "who"), new ResourceImpl(baseURI + "Bob"));
+		m.add(new ResourceImpl(a), new PropertyImpl(baseURI + "where"), new ResourceImpl(baseURI + "BlueRoom"));
 //		m.add(new ResourceImpl(baseURI + "po3"), new PropertyImpl(baseURI + "discusses"), new ResourceImpl(baseURI + "po2"));
 //		m.add(new ResourceImpl(baseURI + "po4"), new PropertyImpl(baseURI + "discusses"), new ResourceImpl(baseURI + "po3"));
 
-		m.add(new ResourceImpl(baseURI + "Alice"), RDF.type, new ResourceImpl(baseURI + "Person"));
-		m.add(new ResourceImpl(baseURI + "Bob"), RDF.type, new ResourceImpl(baseURI + "Person"));
-		m.add(new ResourceImpl(baseURI + "Carl"), RDF.type, new ResourceImpl(baseURI + "Person"));
-		m.add(new ResourceImpl(baseURI + "David"), RDF.type, new ResourceImpl(baseURI + "Person"));
-		m.add(new ResourceImpl(baseURI + "Elen"), RDF.type, new ResourceImpl(baseURI + "Person"));
-		m.add(new ResourceImpl(baseURI + "RedRoom"), RDF.type, new ResourceImpl(baseURI + "Room"));
-		m.add(new ResourceImpl(baseURI + "BlueRoom"), RDF.type, new ResourceImpl(baseURI + "Room"));
-		m.add(new ResourceImpl(baseURI + "RedRoom"), new PropertyImpl(baseURI + "isConnectedTo"), new ResourceImpl(baseURI + "BlueRoom"));
-		m.add(new ResourceImpl(baseURI + "RedSensor"), RDF.type, new ResourceImpl(baseURI + "Sensor"));
-		m.add(new ResourceImpl(baseURI + "BlueSensor"), RDF.type, new ResourceImpl(baseURI + "Sensor"));
+//		m.add(new ResourceImpl(baseURI + "Alice"), RDF.type, new ResourceImpl(baseURI + "Person"));
+//		m.add(new ResourceImpl(baseURI + "Bob"), RDF.type, new ResourceImpl(baseURI + "Person"));
+//		m.add(new ResourceImpl(baseURI + "Carl"), RDF.type, new ResourceImpl(baseURI + "Person"));
+//		m.add(new ResourceImpl(baseURI + "David"), RDF.type, new ResourceImpl(baseURI + "Person"));
+//		m.add(new ResourceImpl(baseURI + "Elen"), RDF.type, new ResourceImpl(baseURI + "Person"));
+//		m.add(new ResourceImpl(baseURI + "RedRoom"), RDF.type, new ResourceImpl(baseURI + "Room"));
+//		m.add(new ResourceImpl(baseURI + "BlueRoom"), RDF.type, new ResourceImpl(baseURI + "Room"));
+//		m.add(new ResourceImpl(baseURI + "RedRoom"), new PropertyImpl(baseURI + "isConnectedTo"), new ResourceImpl(baseURI + "BlueRoom"));
+//		m.add(new ResourceImpl(baseURI + "RedSensor"), RDF.type, new ResourceImpl(baseURI + "Sensor"));
+//		m.add(new ResourceImpl(baseURI + "BlueSensor"), RDF.type, new ResourceImpl(baseURI + "Sensor"));
 
 		StringWriter w = new StringWriter();
 
