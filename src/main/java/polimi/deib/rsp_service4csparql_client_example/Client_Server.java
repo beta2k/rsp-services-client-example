@@ -64,6 +64,7 @@ public class Client_Server extends Application{
 		final int RDFS_INFERENCE = 6;
 		final int ISWC_TUTORIAL_DEMO_TRANSITIVE_INFERENCE = 7;
 //		final int COMPLEX_MODACLOUDS_DEMO = 8;
+		
 
 		int key = QUERY_CHAIN;
 
