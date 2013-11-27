@@ -12,11 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * 
- * Acknowledgements:
- * 
- * This work was partially supported by the European project LarKC (FP7-215535) 
- * and by the European project MODAClouds (FP7-318484)
  ******************************************************************************/
 package polimi.deib.rsp_service4csparql_client_example;
 
@@ -31,7 +26,7 @@ import org.restlet.routing.Template;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import polimi.deib.csparql_rest_api.Csparql_Remote_API;
+import polimi.deib.csparql_rest_api.RSP_services_csparql_API;
 import polimi.deib.csparql_rest_api.exception.ServerErrorException;
 import polimi.deib.rsp_service4csparql_client_example.configuration.Config;
 import polimi.deib.rsp_service4csparql_client_example.json_dataset_deserialization.utilities.List_of_Sparql_json_results_oracle;
@@ -41,10 +36,6 @@ import polimi.deib.rsp_service4csparql_client_example.streamer.ISWC_DemoStreamer
 import polimi.deib.rsp_service4csparql_client_example.streamer.Inference_Streamer;
 import polimi.deib.rsp_service4csparql_client_example.streamer.MultiThreadStreamer;
 import polimi.deib.rsp_service4csparql_client_example.streamer.Static_Knowledge_Test_Streamer;
-import polimi.deib.timisoara_demo.ontology.MC;
-import polimi.deib.timisoara_demo.streamer.CloudWatchCollectorStreamer;
-import polimi.deib.timisoara_demo.streamer.MySQLAggregatedCollectorStreamer;
-import polimi.deib.timisoara_demo.streamer.OFBizLogAggregatedCollectorStreamer;
 
 public class Client_Server extends Application{
 
@@ -56,6 +47,7 @@ public class Client_Server extends Application{
 
 	private static List_of_Sparql_json_results_oracle json_results_list = new List_of_Sparql_json_results_oracle();
 
+	private static String csparqlServerAddress = "http://localhost:8175";
 
 	@SuppressWarnings("unused")
 	public static void main(String[] args) throws Exception{
@@ -71,10 +63,9 @@ public class Client_Server extends Application{
 		final int SPARQL_UDATE = 5;
 		final int RDFS_INFERENCE = 6;
 		final int ISWC_TUTORIAL_DEMO_TRANSITIVE_INFERENCE = 7;
-		final int TIMISOARA_DEMO = 8;
+//		final int COMPLEX_MODACLOUDS_DEMO = 8;
 
-		int key = SINGLE_SELECT_QUERY_SINGLE_OBSERVER;
-		String csparqlServerAddress = "http://localhost:8175";
+		int key = QUERY_CHAIN;
 
 		String actual_client_address;
 		int actual_client_port;
@@ -107,7 +98,7 @@ public class Client_Server extends Application{
 
 			String generalIRI = "http://ex.org/";
 
-			Csparql_Remote_API csparqlAPI = new Csparql_Remote_API(csparqlServerAddress);
+			RSP_services_csparql_API csparqlAPI = new RSP_services_csparql_API(csparqlServerAddress);
 
 			switch(key){
 			case SINGLE_SELECT_QUERY_SINGLE_OBSERVER:
@@ -129,7 +120,7 @@ public class Client_Server extends Application{
 					queryURI = csparqlAPI.registerQuery("HelloWorld", query);
 
 					System.out.println(queryURI);
-					
+
 					json_results_list.setStartTS(System.currentTimeMillis());
 
 					Client_Server.queryProxyIdTable.put(query, queryURI);
@@ -195,7 +186,7 @@ public class Client_Server extends Application{
 					System.out.println(csparqlAPI.unregisterQuery(queryURI));
 					System.out.println(csparqlAPI.unregisterStream(inputstreamName));
 					bs.stopStream();
-					
+
 				} catch (ServerErrorException e) {
 					logger.error("rsp_server4csparql_server error", e);
 				} catch (InterruptedException e) {
@@ -221,28 +212,22 @@ public class Client_Server extends Application{
 					queryURI = csparqlAPI.registerQuery("HelloWorld", query);
 					json_results_list.setStartTS(System.currentTimeMillis());
 
+					streamName2 = extractNewStreamNameFromStreamQuery(queryURI);
+					query2 = "REGISTER QUERY HelloWorld2 AS " +
+							"SELECT ?s " +
+							"FROM STREAM <" + streamName2 + "> [RANGE 10s STEP 10s] " +
+							"WHERE { ?s ?p ?o }";
 
-					if(!queryURI.equals(500)){
+					queryURI2 = csparqlAPI.registerQuery("HelloWorld2", query2);
+					json_results_list.setStartTS(System.currentTimeMillis());
 
-						streamName2 = "http://streamreasoning.org/" + queryURI;
-						query2 = "REGISTER QUERY HelloWorld2 AS " +
-								"SELECT ?s " +
-								"FROM STREAM <" + streamName2 + "> [RANGE 10s STEP 10s] " +
-								"WHERE { ?s ?p ?o }";
+					Client_Server.queryProxyIdTable.put(query, queryURI);
+					Client_Server.queryProxyIdTable.put(query2, queryURI2);
 
-						queryURI2 = csparqlAPI.registerQuery("HelloWorld2", query2);
-						json_results_list.setStartTS(System.currentTimeMillis());
+					csparqlAPI.addObserver(queryURI2, actual_client_address + ":" + actual_client_port + "/results");
 
-						Client_Server.queryProxyIdTable.put(query, queryURI);
-						Client_Server.queryProxyIdTable.put(query2, queryURI2);
+					new Thread(new BaseStreamer(csparqlAPI, inputstreamName, 2000, generalIRI)).start(); 
 
-						csparqlAPI.addObserver(queryURI2, actual_client_address + ":" + actual_client_port + "/results");
-
-						new Thread(new BaseStreamer(csparqlAPI, inputstreamName, 2000, generalIRI)).start(); 
-
-					} else {
-						System.out.println("ERROR");
-					}
 				} catch (ServerErrorException e) {
 					logger.error("rsp_server4csparql_server error", e);
 				} catch (InterruptedException e) {
@@ -462,490 +447,490 @@ public class Client_Server extends Application{
 
 				break;
 
-			case TIMISOARA_DEMO:
-
-				try{
-
-					boolean feeding = true;
-					boolean registering = true;
-					boolean unregistering = false;
-					//				String csparqlURL = "http://www.modaclouds.eu/csparql";
-					//				String csparqlStreamBaseUri = csparqlURL + "/streams/";
-					String csparqlStreamBaseUri = "http://streamreasoning.org/";
-					String cloudWatchCollectorStreamIri = csparqlStreamBaseUri + "cloudWatch";
-					String mySQLCollectorStreamIri = csparqlStreamBaseUri + "mySQL";
-					String ofbizLogCollectorStreamIri = csparqlStreamBaseUri + "ofbizLog";
-
-					Thread.sleep(1000);
-
-					double maxCPU = 0.8;
-
-					String CPUViolationQueryName = "CPUViolationMR";
-					String abortedConnectionsQueryName = "abortedConnectionsMR";
-					String attemptedConnectionsQueryName = "attemptedConnectionsMR";
-					String throughputQueryName = "throughputMR";
-					String plotterObserverDispatcherQueryName = "plotterObserverDispatcherQuery";
-					String plotterObserverTunnelQueryName = "plotterObserverTunnelQuery";
-					String CPUViolationQueryStreamIri = csparqlStreamBaseUri + CPUViolationQueryName;
-					String abortedConnectionsQueryStreamIri = csparqlStreamBaseUri + abortedConnectionsQueryName;
-					String attemptedConnectionsQueryStreamIri = csparqlStreamBaseUri + attemptedConnectionsQueryName;
-					String throughputQueryStreamIri = csparqlStreamBaseUri + throughputQueryName;
-					String plotterObserverDispatcherQueryStreamIri = csparqlStreamBaseUri + plotterObserverDispatcherQueryName;
-					String plotterObserverTunnelQueryStreamIri = csparqlStreamBaseUri + plotterObserverTunnelQueryName;
-
-
-					int CPUViolationTimeStep = 10;
-					String CPUViolationQuery = "REGISTER STREAM "+ CPUViolationQueryName +" AS " +
-							"PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> " +
-							"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> " +
-							"PREFIX mc: <" + MC.getURI() + "> " +
-							"CONSTRUCT { [] rdf:type mc:EnableAction ; " +
-							"mc:hasArgument mc:AbortedConnectionsMR ; " +
-							"mc:hasArgument mc:AttemptedConnectionsMR ; " +
-							"mc:hasArgument mc:ThroughputMR ; " +
-							"mc:hasArgument ?infrastructure . } " +
-							"FROM STREAM <" + cloudWatchCollectorStreamIri + "> [RANGE 60s STEP "+CPUViolationTimeStep+"s] " +
-							"WHERE { { " +
-							"SELECT (AVG(?value) AS ?avgCPU) ?infrastructure " +
-							"WHERE { " +
-							"?datum mc:hasMetric mc:CPUUtilization . " +
-							"?datum mc:isAbout ?infrastructure . " +
-							"?datum mc:hasValue ?value . " +
-							"?platform mc:runsOn ?infrastructure . " +
-							"?platform rdf:type mc:Platform . " +
-							"?infrastructure rdf:type mc:Infrastructure . " + 
-							"} " +
-							"GROUP BY ?infrastructure " +
-							"HAVING (?avgCPU > \"" + maxCPU + "\"^^xsd:double) " +
-							"} }";
-
-					//				EVENTS:
-					//				String abortedConnectionsQuery = "REGISTER STREAM "+ abortedConnectionsQueryName +" AS " +
-					//						"PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> " +
-					//						"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> " +
-					//						"PREFIX mc: <" + MC.getURI() + "> " +
-					//						"CONSTRUCT { [] rdf:type mc:SendAction ; " +
-					//						"mc:hasArgument mc:PlotterObserver ; " +
-					//						"mc:hasArgument [ rdf:type mc:Variable ; " +
-					//						"mc:hasValue ?abortedConnections ; " +
-					//						"mc:hasMetric mc:AbortedConnections ; " +
-					//						"mc:hasPlatform ?platform ] . } " +
-					//						"FROM STREAM <" + mySQLCollectorStreamIri + "> [RANGE 10s STEP 10s] " +
-					//						"FROM STREAM <" + CPUViolationQueryStreamIri + "> [RANGE 10s STEP 10s] " +
-					//						"WHERE { { " +
-					//						"SELECT ?abortedConnections ?platform " +
-					//						"WHERE { " +
-					//						"?action rdf:type mc:EnableAction . " +
-					//						"?action mc:hasArgument mc:AbortedConnectionsMR . " +
-					//						"{ SELECT (COUNT(?event) AS ?abortedConnections) ?platform " +
-					//						"WHERE { " +
-					//						"?action rdf:type mc:EnableAction . " +
-					//						"?action mc:hasArgument mc:AbortedConnectionsMR . " +
-					//						"?action mc:hasArgument ?infrastructure . " +
-					//						"?event rdf:type mc:AbortedConnectionEvent . " +
-					//						"?event mc:isAbout ?platform . " +
-					//						"?platform mc:runsOn ?infrastructure . " +
-					//						"?infrastructure rdf:type mc:Infrastructure . " + 
-					//						"?platform rdf:type mc:Platform . " + 
-					//						"} " +
-					//						"GROUP BY ?platform } " +
-					//						"} " +
-					//						"} }";
-
-
-					String abortedConnectionsQuery = "REGISTER STREAM "+ abortedConnectionsQueryName +" AS " +
-							"PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> " +
-							"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> " +
-							"PREFIX mc: <" + MC.getURI() + "> " +
-							"CONSTRUCT { [] rdf:type mc:SendAction ; " +
-							"mc:hasArgument mc:PlotterObserver ; " +
-							"mc:hasArgument [ rdf:type mc:Variable ; " +
-							"mc:hasValue ?abortedConnections ; " +
-							"mc:hasMetric mc:AbortedConnections ; " +
-							"mc:hasPlatform ?platform ] . } " +
-							"FROM STREAM <" + mySQLCollectorStreamIri + "> [RANGE 10s STEP 10s] " +
-							"FROM STREAM <" + CPUViolationQueryStreamIri + "> [RANGE 10s STEP 10s] " +
-							"WHERE { { " +
-							"SELECT ?abortedConnections ?platform " +
-							"WHERE { " +
-							"?action rdf:type mc:EnableAction . " +
-							"?action mc:hasArgument mc:AbortedConnectionsMR . " +
-							"{ SELECT (SUM(?value) AS ?abortedConnections) ?platform " +
-							"WHERE { " +
-							"?action rdf:type mc:EnableAction . " +
-							"?action mc:hasArgument mc:AbortedConnectionsMR . " +
-							"?action mc:hasArgument ?infrastructure . " +
-							"?datum rdf:type mc:MonitoringDatum . " +
-							"?datum mc:hasMetric mc:AbortedConnections . " +
-							"?datum mc:hasValue ?value . " +
-							"?datum mc:isAbout ?platform . " +
-							"?platform mc:runsOn ?infrastructure . " +
-							"?infrastructure rdf:type mc:Infrastructure . " + 
-							"?platform rdf:type mc:Platform . " + 
-							"} " +
-							"GROUP BY ?platform } " +
-							"} " +
-							"} }";
-
-					//				EVENTS:
-					//				String attemptedConnectionsQuery = "REGISTER STREAM "+ attemptedConnectionsQueryName +" AS " +
-					//						"PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> " +
-					//						"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> " +
-					//						"PREFIX mc: <" + MC.getURI() + "> " +
-					//						"CONSTRUCT { [] rdf:type mc:SendAction ; " +
-					//						"mc:hasArgument mc:PlotterObserver ; " +
-					//						"mc:hasArgument [ rdf:type mc:Variable ; " +
-					//						"mc:hasValue ?attemptedConnections ; " +
-					//						"mc:hasMetric mc:AttemptedConnections ; " +
-					//						"mc:hasPlatform ?platform ] . } " +
-					//						"FROM STREAM <" + mySQLCollectorStreamIri + "> [RANGE 10s STEP 10s] " +
-					//						"FROM STREAM <" + CPUViolationQueryStreamIri + "> [RANGE 10s STEP 10s] " +
-					//						"WHERE { { " +
-					//						"SELECT ?attemptedConnections ?platform " +
-					//						"WHERE { " +
-					//						"?action rdf:type mc:EnableAction . " +
-					//						"?action mc:hasArgument mc:AttemptedConnectionsMR . " +
-					//						"{ SELECT (COUNT(?event) AS ?attemptedConnections) ?platform " +
-					//						"WHERE { " +
-					//						"?action rdf:type mc:EnableAction . " +
-					//						"?action mc:hasArgument mc:AttemptedConnectionsMR . " +
-					//						"?action mc:hasArgument ?infrastructure . " +
-					//						"?event rdf:type mc:AttemptedConnectionEvent . " +
-					//						"?event mc:isAbout ?platform . " +
-					//						"?platform mc:runsOn ?infrastructure . " +
-					//						"?infrastructure rdf:type mc:Infrastructure . " + 
-					//						"?platform rdf:type mc:Platform . " + 
-					//						"} " +
-					//						"GROUP BY ?platform } " +
-					//						"} " +
-					//						"} }";
-
-					String attemptedConnectionsQuery = "REGISTER STREAM "+ attemptedConnectionsQueryName +" AS " +
-							"PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> " +
-							"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> " +
-							"PREFIX mc: <" + MC.getURI() + "> " +
-							"CONSTRUCT { [] rdf:type mc:SendAction ; " +
-							"mc:hasArgument mc:PlotterObserver ; " +
-							"mc:hasArgument [ rdf:type mc:Variable ; " +
-							"mc:hasValue ?attemptedConnections ; " +
-							"mc:hasMetric mc:AttemptedConnections ; " +
-							"mc:hasPlatform ?platform ] . } " +
-							"FROM STREAM <" + mySQLCollectorStreamIri + "> [RANGE 10s STEP 10s] " +
-							"FROM STREAM <" + CPUViolationQueryStreamIri + "> [RANGE 10s STEP 10s] " +
-							"WHERE { { " +
-							"SELECT ?attemptedConnections ?platform " +
-							"WHERE { " +
-							"?action rdf:type mc:EnableAction . " +
-							"?action mc:hasArgument mc:AttemptedConnectionsMR . " +
-							"{ SELECT (SUM(?value) AS ?attemptedConnections) ?platform " +
-							"WHERE { " +
-							"?action rdf:type mc:EnableAction . " +
-							"?action mc:hasArgument mc:AttemptedConnectionsMR . " +
-							"?action mc:hasArgument ?infrastructure . " +
-							"?datum rdf:type mc:MonitoringDatum . " +
-							"?datum mc:hasMetric mc:AttemptedConnections . " +
-							"?datum mc:hasValue ?value . " +
-							"?datum mc:isAbout ?platform . " +
-							"?platform mc:runsOn ?infrastructure . " +
-							"?infrastructure rdf:type mc:Infrastructure . " + 
-							"?platform rdf:type mc:Platform . " + 
-							"} " +
-							"GROUP BY ?platform } " +
-							"} " +
-							"} }";
-
-					//				EVENTS:
-					//				String throughputQuery = "REGISTER STREAM "+ throughputQueryName +" AS " +
-					//						"PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> " +
-					//						"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> " +
-					//						"PREFIX mc: <" + MC.getURI() + "> " +
-					//						"CONSTRUCT { [] rdf:type mc:SendAction ; " +
-					//						"mc:hasArgument mc:PlotterObserver ; " +
-					//						"mc:hasArgument [ rdf:type mc:Variable ; " +
-					//						"mc:hasValue ?throughput ; " +
-					//						"mc:hasMetric mc:Throughput ; " +
-					//						"mc:hasOperation ?operation ] . } " +
-					//						"FROM STREAM <" + ofbizLogCollectorStreamIri + "> [RANGE 10s STEP 10s] " +
-					//						"FROM STREAM <" + CPUViolationQueryStreamIri + "> [RANGE 10s STEP 10s] " +
-					//						"WHERE { { " +
-					//						"SELECT ?throughput ?operation " +
-					//						"WHERE { " +
-					//						"?action rdf:type mc:EnableAction . " +
-					//						"?action mc:hasArgument mc:ThroughputMR . " +
-					//						"{ SELECT (COUNT(?request)/10 AS ?throughput) ?operation " +
-					//						"WHERE { " +
-					//						"?action rdf:type mc:EnableAction . " +
-					//						"?action mc:hasArgument mc:ThroughputMR . " +
-					//						"?action mc:hasArgument ?infrastructure . " +
-					//						"?datum rdf:type mc:SuccessfulRequestEvent . " +
-					//						"?datum mc:isAbout ?request . " +
-					//						"?request mc:asksFor ?operation . " +
-					//						"?operation mc:isProvidedBy ?software . " + 
-					//						"?software mc:runsOn ?infrastructure . " + 
-					//						"} " +
-					//						"GROUP BY ?operation } " +
-					//						"} " +
-					//						"} }";
-
-					int throughputTimeWindow = 10;
-					String throughputQuery = "REGISTER STREAM "+ throughputQueryName +" AS " +
-							"PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> " +
-							"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> " +
-							"PREFIX mc: <" + MC.getURI() + "> " +
-							"CONSTRUCT { [] rdf:type mc:SendAction ; " +
-							"mc:hasArgument mc:PlotterObserver ; " +
-							"mc:hasArgument [ rdf:type mc:Variable ; " +
-							"mc:hasValue ?throughput ; " +
-							"mc:hasMetric mc:Throughput ; " +
-							"mc:hasOperation ?operation ] . } " +
-							"FROM STREAM <" + ofbizLogCollectorStreamIri + "> [RANGE "+throughputTimeWindow+"s STEP 10s] " +
-							"FROM STREAM <" + CPUViolationQueryStreamIri + "> [RANGE 10s STEP 10s] " +
-							"WHERE { { " +
-							"SELECT ?throughput ?operation " +
-							"WHERE { " +
-							"?action rdf:type mc:EnableAction . " +
-							"?action mc:hasArgument mc:ThroughputMR . " +
-							"{ SELECT (SUM(?value)/"+throughputTimeWindow+" AS ?throughput) ?operation " +
-							"WHERE { " +
-							"?action rdf:type mc:EnableAction . " +
-							"?action mc:hasArgument mc:ThroughputMR . " +
-							"?action mc:hasArgument ?infrastructure . " +
-							"?datum rdf:type mc:MonitoringDatum . " +
-							"?datum mc:hasValue ?value . " +
-							"?datum mc:hasMetric mc:SuccessfulRequests . " +
-							"?datum mc:isAbout ?request . " +
-							"?request mc:asksFor ?operation . " +
-							"?operation mc:isProvidedBy ?software . " + 
-							"?software mc:runsOn ?infrastructure . " + 
-							"} " +
-							"GROUP BY ?operation } " +
-							"} " +
-							"} }";
-
-					String plotterObserverDispatcherQuery = "REGISTER STREAM "+ plotterObserverDispatcherQueryName +" AS " +
-							"PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> " +
-							"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> " +
-							"PREFIX mc: <" + MC.getURI() + "> " +
-							"PREFIX f: <http://larkc.eu/csparql/sparql/jena/ext#> " +
-							"SELECT ?provider ?infrastrucureClass ?infrastructure ?platformClass ?platform " +
-							"?softwareClass ?software ?operationClass ?operation ?metric ?value ?timestamp " +
-							"FROM STREAM <" + abortedConnectionsQueryStreamIri + "> [RANGE 10s STEP 10s] " +
-							"FROM STREAM <" + attemptedConnectionsQueryStreamIri + "> [RANGE 10s STEP 10s] " +
-							"FROM STREAM <" + throughputQueryStreamIri + "> [RANGE 10s STEP 10s] " +
-							"WHERE { { " +
-							"SELECT ?provider ?infrastrucureClass ?infrastructure ?platformClass ?platform " +
-							"?softwareClass ?software ?operationClass ?operation ?metric ?value (f:timestamp(?action, mc:hasArgument, ?variable) AS ?timestamp) " +
-							"WHERE { " +
-							"?action rdf:type mc:SendAction . " +
-							"?action mc:hasArgument mc:PlotterObserver . " +
-							"?action mc:hasArgument ?variable . " +
-							"?variable mc:hasValue ?value . " +
-							"?variable mc:hasMetric ?metric . " +
-							"OPTIONAL { ?variable mc:hasProvider ?provider } . " +
-							"OPTIONAL { ?variable mc:hasInfrastructureClass ?infrastructureClass } . " +
-							"OPTIONAL { ?variable mc:hasInfrastructure ?infrastructure } . " +
-							"OPTIONAL { ?variable mc:hasPlatformClass ?platformClass } . " +
-							"OPTIONAL { ?variable mc:hasPlatform ?platform } . " +
-							"OPTIONAL { ?variable mc:hasSoftwareClass ?softwareClass } . " +
-							"OPTIONAL { ?variable mc:hasSoftware ?software } . " +
-							"OPTIONAL { ?variable mc:hasOperationClass ?operationClass } . " +
-							"OPTIONAL { ?variable mc:hasOperation ?operation } " +
-							"} " +
-							"} } ";
-
-
-					String plotterObserverTunnelQuery = "REGISTER STREAM "+ plotterObserverTunnelQueryName +" AS " +
-							"PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> " +
-							"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> " +
-							"PREFIX mc: <" + MC.getURI() + "> " +
-							"PREFIX f: <http://larkc.eu/csparql/sparql/jena/ext#> " +
-							"SELECT ?provider ?infrastrucureClass ?infrastructure ?platformClass ?platform " +
-							"?softwareClass ?software ?operationClass ?operation ?metric ?value ?timestamp " +
-							"FROM STREAM <" + cloudWatchCollectorStreamIri + "> [RANGE 10s STEP 10s] " +
-							"WHERE { { " +
-							"SELECT ?provider ?infrastrucureClass ?infrastructure ?platformClass ?platform " +
-							"?softwareClass ?software ?operationClass ?operation ?metric ?value (f:timestamp(?datum, mc:hasMetric, ?metric) AS ?timestamp) " +
-							"WHERE { " +
-							"?datum rdf:type mc:MonitoringDatum . " +
-							"?datum mc:hasMetric ?metric . " +
-							"OPTIONAL { ?datum mc:isAbout ?infrastructure . ?infrastructure rdf:type mc:Infrastructure } . " + //subclassof mc:infrastructure, rdf:type infraClass
-							"?datum mc:hasValue ?value . " +
-							"} " +
-							"} } ";
-
-					String CPUViolationQueryID = CPUViolationQueryName;
-					String abortedConnectionsQueryID = abortedConnectionsQueryName;
-					String attemptedConnectionsQueryID = attemptedConnectionsQueryName;
-					String throughputQueryID = throughputQueryName;
-					String plotterObserverDispatcherQueryID = plotterObserverDispatcherQueryName;
-					String plotterObserverTunnelQueryID = plotterObserverTunnelQueryName;
-
-					if (unregistering){
-						System.out.println(csparqlAPI.unregisterStream(cloudWatchCollectorStreamIri));
-						System.out.println(csparqlAPI.unregisterStream(mySQLCollectorStreamIri));
-						System.out.println(csparqlAPI.unregisterStream(ofbizLogCollectorStreamIri));
-						System.out.println(csparqlAPI.unregisterQuery(CPUViolationQueryID));
-						System.out.println(csparqlAPI.unregisterQuery(abortedConnectionsQueryID));
-						System.out.println(csparqlAPI.unregisterQuery(attemptedConnectionsQueryID));
-						System.out.println(csparqlAPI.unregisterQuery(throughputQueryID));
-						System.out.println(csparqlAPI.unregisterQuery(plotterObserverDispatcherQueryID));
-						System.out.println(csparqlAPI.unregisterQuery(plotterObserverTunnelQueryID));
-					}
-					if (registering) {
-						System.out.println(csparqlAPI.registerStream(cloudWatchCollectorStreamIri));
-						System.out.println(csparqlAPI.registerStream(mySQLCollectorStreamIri));
-						System.out.println(csparqlAPI.registerStream(ofbizLogCollectorStreamIri));
-
-
-						CPUViolationQueryID = csparqlAPI.registerQuery(CPUViolationQueryName, CPUViolationQuery);
-						json_results_list.setStartTS(System.currentTimeMillis());
-
-						System.out.println(CPUViolationQueryID);
-
-						abortedConnectionsQueryID = csparqlAPI.registerQuery(abortedConnectionsQueryName, abortedConnectionsQuery);
-						json_results_list.setStartTS(System.currentTimeMillis());
-
-						System.out.println(abortedConnectionsQueryID);
-
-						Thread.sleep(1000);
-
-						attemptedConnectionsQueryID = csparqlAPI.registerQuery(attemptedConnectionsQueryName, attemptedConnectionsQuery);
-						json_results_list.setStartTS(System.currentTimeMillis());
-
-						System.out.println(attemptedConnectionsQueryID);
-
-						Thread.sleep(1000);
-
-						throughputQueryID = csparqlAPI.registerQuery(throughputQueryName, throughputQuery);
-						json_results_list.setStartTS(System.currentTimeMillis());
-
-						System.out.println(throughputQueryID);
-
-						Thread.sleep(1000);
-
-						plotterObserverDispatcherQueryID = csparqlAPI.registerQuery(plotterObserverDispatcherQueryName, plotterObserverDispatcherQuery);
-						json_results_list.setStartTS(System.currentTimeMillis());
-
-						System.out.println(plotterObserverDispatcherQueryID);
-
-						Thread.sleep(1000);
-
-						plotterObserverTunnelQueryID = csparqlAPI.registerQuery(plotterObserverTunnelQueryName, plotterObserverTunnelQuery);
-						json_results_list.setStartTS(System.currentTimeMillis());
-
-						System.out.println(plotterObserverTunnelQueryID);
-					}
-					if (feeding) {
-
-						String urlToPlotterObserver = "http://localhost:8176/results";
-
-
-						//			csparqlAPI.addObserver(CPUViolationQueryID, urlToPlotterObserver); //test
-						//			csparqlAPI.addObserver(abortedConnectionsQueryID, urlToPlotterObserver); //test
-						//			csparqlAPI.addObserver(attemptedConnectionsQueryID, urlToPlotterObserver); //test
-						//			csparqlAPI.addObserver(throughputQueryID, urlToPlotterObserver); //test
-						csparqlAPI.addObserver(plotterObserverDispatcherQueryID, urlToPlotterObserver);
-						csparqlAPI.addObserver(plotterObserverTunnelQueryID, urlToPlotterObserver);
-
-						Client_Server.queryProxyIdTable.put(CPUViolationQuery, CPUViolationQueryID);
-						Client_Server.queryProxyIdTable.put(abortedConnectionsQuery, abortedConnectionsQueryID);
-						Client_Server.queryProxyIdTable.put(attemptedConnectionsQuery, attemptedConnectionsQueryID);
-						Client_Server.queryProxyIdTable.put(throughputQuery, throughputQueryID);
-						Client_Server.queryProxyIdTable.put(plotterObserverDispatcherQuery, plotterObserverDispatcherQueryID);
-						Client_Server.queryProxyIdTable.put(plotterObserverTunnelQuery, plotterObserverTunnelQueryID);
-
-
-						String urlToAmazonBackEndVM = "http://backend.amazon.com";
-						String urlToFlexiBackEndVM = "http://backend.flexi.com";
-						String urlToAmazonFrontEndVM = "http://backend.amazon.com";
-						String urlToFlexiFrontEndVM = "http://backend.flexi.com";
-						String mySQLPort = "8080";
-						String OFBizPort = "80";
-						String urlToAmazonOfbiz = urlToAmazonFrontEndVM + ":" + OFBizPort;
-						String urlToFlexiOfbiz = urlToFlexiFrontEndVM + ":" + OFBizPort;
-
-						String amazonBackEndVMIRI = urlToAmazonBackEndVM + "/" + MC.AmazonBackEndVM.getLocalName() + "#1";
-						String flexiBackEndVMIRI = urlToFlexiBackEndVM + "/" + MC.FlexiBackEndVM.getLocalName() + "#1";
-						String amazonFrontEndVMIRI = urlToAmazonFrontEndVM + "/" + MC.AmazonFrontEndVM.getLocalName() + "#1";
-						String flexiFrontEndVMIRI = urlToFlexiFrontEndVM + "/" + MC.FlexiFrontEndVM.getLocalName() + "#1";
-						String amazonMySQLIRI = urlToAmazonBackEndVM + ":"+mySQLPort+"/" + MC.MySQL.getLocalName() + "#1";
-						String flexiMySQLIRI = urlToFlexiBackEndVM + ":"+mySQLPort+"/" + MC.MySQL.getLocalName() + "#1";
-						String amazonOFBizIRI = urlToAmazonOfbiz + "/" + MC.OFBiz.getLocalName() + "#1";
-						String flexiOFBizIRI = urlToFlexiOfbiz + "/" + MC.OFBiz.getLocalName() + "#1";
-						String amazonJVMIRI = urlToAmazonFrontEndVM + "/" + MC.JVM.getLocalName() + "#1";
-						String flexiJVMIRI = urlToFlexiFrontEndVM + "/" + MC.JVM.getLocalName() + "#1";
-
-						long cloudWatchTimeStep = 2000;
-						double amazonBackEndMeanCpuValue = 0.9;
-						double flexiBackEndMeanCpuValue = 0.5;
-						double amazonFrontEndMeanCpuValue = 0.3;
-						double flexiFrontEndMeanCpuValue = 0.9;
-						new Thread(new CloudWatchCollectorStreamer(csparqlServerAddress, cloudWatchCollectorStreamIri, cloudWatchTimeStep, 
-								amazonBackEndVMIRI, amazonMySQLIRI, null, amazonBackEndMeanCpuValue)).start();
-						new Thread(new CloudWatchCollectorStreamer(csparqlServerAddress, cloudWatchCollectorStreamIri, cloudWatchTimeStep, 
-								flexiBackEndVMIRI, flexiMySQLIRI, null, flexiBackEndMeanCpuValue)).start();
-						new Thread(new CloudWatchCollectorStreamer(csparqlServerAddress, cloudWatchCollectorStreamIri, cloudWatchTimeStep, 
-								amazonFrontEndVMIRI, null, amazonOFBizIRI, amazonFrontEndMeanCpuValue)).start();
-						new Thread(new CloudWatchCollectorStreamer(csparqlServerAddress, cloudWatchCollectorStreamIri, cloudWatchTimeStep, 
-								flexiFrontEndVMIRI, flexiOFBizIRI, null, flexiFrontEndMeanCpuValue)).start();
-
-						int MySQLTimeStep = 2000;
-						double amazonMySQLProbFailure = 0.3;
-						new Thread(new MySQLAggregatedCollectorStreamer(csparqlServerAddress, mySQLCollectorStreamIri, MC.AmazonBackEndVM, 
-								amazonBackEndVMIRI, amazonMySQLIRI, MySQLTimeStep, amazonMySQLProbFailure)).start();
-
-
-						double flexiMySQLProbFailure = 0.2;
-						new Thread(new MySQLAggregatedCollectorStreamer(csparqlServerAddress, mySQLCollectorStreamIri, MC.FlexiBackEndVM, 
-								flexiBackEndVMIRI, flexiMySQLIRI, MySQLTimeStep, flexiMySQLProbFailure)).start();
-
-
-						int OfbizCollectorTimeStep = 3000;
-						new Thread(new OFBizLogAggregatedCollectorStreamer(csparqlServerAddress, ofbizLogCollectorStreamIri, urlToAmazonOfbiz, 
-								amazonFrontEndVMIRI, amazonJVMIRI, amazonOFBizIRI, OfbizCollectorTimeStep)).start();
-
-						new Thread(new OFBizLogAggregatedCollectorStreamer(csparqlServerAddress, ofbizLogCollectorStreamIri, urlToFlexiOfbiz, 
-								flexiFrontEndVMIRI, flexiJVMIRI, flexiOFBizIRI, OfbizCollectorTimeStep)).start();
-
-
-
-						//			int amazonMySQLMTBConnections = 1000;
-						//			int amazonMySQLDeltaMTBConn = 500;
-						//			double amazonMySQLProbFailure = 0.3;
-						//			new Thread(new MySQLEventsCollectorStreamer(csparqlServerAddress, mySQLCollectorStreamIri, MC.AmazonBackEndVM, 
-						//					amazonBackEndVMIRI, amazonMySQLIRI, amazonMySQLMTBConnections, amazonMySQLDeltaMTBConn, amazonMySQLProbFailure)).start();
-						//	
-						//			
-						//			
-						//			int flexiMySQLMTBConnections = 1200;
-						//			int flexiMySQLDeltaMTBConn = 700;
-						//			double flexiMySQLProbFailure = 0.2;
-						//			new Thread(new MySQLEventsCollectorStreamer(csparqlServerAddress, mySQLCollectorStreamIri, MC.FlexiBackEndVM, 
-						//					flexiBackEndVMIRI, flexiMySQLIRI, flexiMySQLMTBConnections, flexiMySQLDeltaMTBConn, flexiMySQLProbFailure)).start();
-						//	
-						//			
-						//			int amazonOFBizMTBRequests = 300;
-						//			int amazonOFBizDeltaMTBReqs = 100;
-						//			double amazonOFBizProbFailure = 0.5;
-						//			new Thread(new OFBizLogEventsCollectorStreamer(csparqlServerAddress, ofbizLogCollectorStreamIri, urlToAmazonOfbiz, 
-						//					amazonFrontEndVMIRI, amazonJVMIRI, amazonOFBizIRI, amazonOFBizMTBRequests, amazonOFBizDeltaMTBReqs, amazonOFBizProbFailure)).start();
-						//		
-						//			
-						//			int flexiOFBizMTBRequests = 200;
-						//			int flexiOFBizDeltaMTBReqs = 100;
-						//			double flexiOFBizProbFailure = 0.2;
-						//			new Thread(new OFBizLogEventsCollectorStreamer(csparqlServerAddress, ofbizLogCollectorStreamIri, urlToFlexiOfbiz, 
-						//					flexiFrontEndVMIRI, flexiJVMIRI, flexiOFBizIRI, flexiOFBizMTBRequests, flexiOFBizDeltaMTBReqs, flexiOFBizProbFailure)).start();
-
-
-					}
-				} catch (ServerErrorException e) {
-					logger.error("rsp_server4csparql_server error", e);
-				} catch (InterruptedException e) {
-					logger.error("Error while launching the sleep operation", e);
-				}
-
-				break;
+				//			case COMPLEX_MODACLOUDS_DEMO:
+				//
+				//				try{
+				//
+				//					boolean feeding = true;
+				//					boolean registering = true;
+				//					boolean unregistering = false;
+				//					//				String csparqlURL = "http://www.modaclouds.eu/csparql";
+				//					//				String csparqlStreamBaseUri = csparqlURL + "/streams/";
+				//					String csparqlStreamBaseUri = "http://streamreasoning.org/";
+				//					String cloudWatchCollectorStreamIri = csparqlStreamBaseUri + "cloudWatch";
+				//					String mySQLCollectorStreamIri = csparqlStreamBaseUri + "mySQL";
+				//					String ofbizLogCollectorStreamIri = csparqlStreamBaseUri + "ofbizLog";
+				//
+				//					Thread.sleep(1000);
+				//
+				//					double maxCPU = 0.8;
+				//
+				//					String CPUViolationQueryName = "CPUViolationMR";
+				//					String abortedConnectionsQueryName = "abortedConnectionsMR";
+				//					String attemptedConnectionsQueryName = "attemptedConnectionsMR";
+				//					String throughputQueryName = "throughputMR";
+				//					String plotterObserverDispatcherQueryName = "plotterObserverDispatcherQuery";
+				//					String plotterObserverTunnelQueryName = "plotterObserverTunnelQuery";
+				//					String CPUViolationQueryStreamIri = csparqlStreamBaseUri + CPUViolationQueryName;
+				//					String abortedConnectionsQueryStreamIri = csparqlStreamBaseUri + abortedConnectionsQueryName;
+				//					String attemptedConnectionsQueryStreamIri = csparqlStreamBaseUri + attemptedConnectionsQueryName;
+				//					String throughputQueryStreamIri = csparqlStreamBaseUri + throughputQueryName;
+				//					String plotterObserverDispatcherQueryStreamIri = csparqlStreamBaseUri + plotterObserverDispatcherQueryName;
+				//					String plotterObserverTunnelQueryStreamIri = csparqlStreamBaseUri + plotterObserverTunnelQueryName;
+				//
+				//
+				//					int CPUViolationTimeStep = 10;
+				//					String CPUViolationQuery = "REGISTER STREAM "+ CPUViolationQueryName +" AS " +
+				//							"PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> " +
+				//							"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> " +
+				//							"PREFIX mc: <" + MC.getURI() + "> " +
+				//							"CONSTRUCT { [] rdf:type mc:EnableAction ; " +
+				//							"mc:hasArgument mc:AbortedConnectionsMR ; " +
+				//							"mc:hasArgument mc:AttemptedConnectionsMR ; " +
+				//							"mc:hasArgument mc:ThroughputMR ; " +
+				//							"mc:hasArgument ?infrastructure . } " +
+				//							"FROM STREAM <" + cloudWatchCollectorStreamIri + "> [RANGE 60s STEP "+CPUViolationTimeStep+"s] " +
+				//							"WHERE { { " +
+				//							"SELECT (AVG(?value) AS ?avgCPU) ?infrastructure " +
+				//							"WHERE { " +
+				//							"?datum mc:hasMetric mc:CPUUtilization . " +
+				//							"?datum mc:isAbout ?infrastructure . " +
+				//							"?datum mc:hasValue ?value . " +
+				//							"?platform mc:runsOn ?infrastructure . " +
+				//							"?platform rdf:type mc:Platform . " +
+				//							"?infrastructure rdf:type mc:Infrastructure . " + 
+				//							"} " +
+				//							"GROUP BY ?infrastructure " +
+				//							"HAVING (?avgCPU > \"" + maxCPU + "\"^^xsd:double) " +
+				//							"} }";
+				//
+				//					//				EVENTS:
+				//					//				String abortedConnectionsQuery = "REGISTER STREAM "+ abortedConnectionsQueryName +" AS " +
+				//					//						"PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> " +
+				//					//						"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> " +
+				//					//						"PREFIX mc: <" + MC.getURI() + "> " +
+				//					//						"CONSTRUCT { [] rdf:type mc:SendAction ; " +
+				//					//						"mc:hasArgument mc:PlotterObserver ; " +
+				//					//						"mc:hasArgument [ rdf:type mc:Variable ; " +
+				//					//						"mc:hasValue ?abortedConnections ; " +
+				//					//						"mc:hasMetric mc:AbortedConnections ; " +
+				//					//						"mc:hasPlatform ?platform ] . } " +
+				//					//						"FROM STREAM <" + mySQLCollectorStreamIri + "> [RANGE 10s STEP 10s] " +
+				//					//						"FROM STREAM <" + CPUViolationQueryStreamIri + "> [RANGE 10s STEP 10s] " +
+				//					//						"WHERE { { " +
+				//					//						"SELECT ?abortedConnections ?platform " +
+				//					//						"WHERE { " +
+				//					//						"?action rdf:type mc:EnableAction . " +
+				//					//						"?action mc:hasArgument mc:AbortedConnectionsMR . " +
+				//					//						"{ SELECT (COUNT(?event) AS ?abortedConnections) ?platform " +
+				//					//						"WHERE { " +
+				//					//						"?action rdf:type mc:EnableAction . " +
+				//					//						"?action mc:hasArgument mc:AbortedConnectionsMR . " +
+				//					//						"?action mc:hasArgument ?infrastructure . " +
+				//					//						"?event rdf:type mc:AbortedConnectionEvent . " +
+				//					//						"?event mc:isAbout ?platform . " +
+				//					//						"?platform mc:runsOn ?infrastructure . " +
+				//					//						"?infrastructure rdf:type mc:Infrastructure . " + 
+				//					//						"?platform rdf:type mc:Platform . " + 
+				//					//						"} " +
+				//					//						"GROUP BY ?platform } " +
+				//					//						"} " +
+				//					//						"} }";
+				//
+				//
+				//					String abortedConnectionsQuery = "REGISTER STREAM "+ abortedConnectionsQueryName +" AS " +
+				//							"PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> " +
+				//							"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> " +
+				//							"PREFIX mc: <" + MC.getURI() + "> " +
+				//							"CONSTRUCT { [] rdf:type mc:SendAction ; " +
+				//							"mc:hasArgument mc:PlotterObserver ; " +
+				//							"mc:hasArgument [ rdf:type mc:Variable ; " +
+				//							"mc:hasValue ?abortedConnections ; " +
+				//							"mc:hasMetric mc:AbortedConnections ; " +
+				//							"mc:hasPlatform ?platform ] . } " +
+				//							"FROM STREAM <" + mySQLCollectorStreamIri + "> [RANGE 10s STEP 10s] " +
+				//							"FROM STREAM <" + CPUViolationQueryStreamIri + "> [RANGE 10s STEP 10s] " +
+				//							"WHERE { { " +
+				//							"SELECT ?abortedConnections ?platform " +
+				//							"WHERE { " +
+				//							"?action rdf:type mc:EnableAction . " +
+				//							"?action mc:hasArgument mc:AbortedConnectionsMR . " +
+				//							"{ SELECT (SUM(?value) AS ?abortedConnections) ?platform " +
+				//							"WHERE { " +
+				//							"?action rdf:type mc:EnableAction . " +
+				//							"?action mc:hasArgument mc:AbortedConnectionsMR . " +
+				//							"?action mc:hasArgument ?infrastructure . " +
+				//							"?datum rdf:type mc:MonitoringDatum . " +
+				//							"?datum mc:hasMetric mc:AbortedConnections . " +
+				//							"?datum mc:hasValue ?value . " +
+				//							"?datum mc:isAbout ?platform . " +
+				//							"?platform mc:runsOn ?infrastructure . " +
+				//							"?infrastructure rdf:type mc:Infrastructure . " + 
+				//							"?platform rdf:type mc:Platform . " + 
+				//							"} " +
+				//							"GROUP BY ?platform } " +
+				//							"} " +
+				//							"} }";
+				//
+				//					//				EVENTS:
+				//					//				String attemptedConnectionsQuery = "REGISTER STREAM "+ attemptedConnectionsQueryName +" AS " +
+				//					//						"PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> " +
+				//					//						"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> " +
+				//					//						"PREFIX mc: <" + MC.getURI() + "> " +
+				//					//						"CONSTRUCT { [] rdf:type mc:SendAction ; " +
+				//					//						"mc:hasArgument mc:PlotterObserver ; " +
+				//					//						"mc:hasArgument [ rdf:type mc:Variable ; " +
+				//					//						"mc:hasValue ?attemptedConnections ; " +
+				//					//						"mc:hasMetric mc:AttemptedConnections ; " +
+				//					//						"mc:hasPlatform ?platform ] . } " +
+				//					//						"FROM STREAM <" + mySQLCollectorStreamIri + "> [RANGE 10s STEP 10s] " +
+				//					//						"FROM STREAM <" + CPUViolationQueryStreamIri + "> [RANGE 10s STEP 10s] " +
+				//					//						"WHERE { { " +
+				//					//						"SELECT ?attemptedConnections ?platform " +
+				//					//						"WHERE { " +
+				//					//						"?action rdf:type mc:EnableAction . " +
+				//					//						"?action mc:hasArgument mc:AttemptedConnectionsMR . " +
+				//					//						"{ SELECT (COUNT(?event) AS ?attemptedConnections) ?platform " +
+				//					//						"WHERE { " +
+				//					//						"?action rdf:type mc:EnableAction . " +
+				//					//						"?action mc:hasArgument mc:AttemptedConnectionsMR . " +
+				//					//						"?action mc:hasArgument ?infrastructure . " +
+				//					//						"?event rdf:type mc:AttemptedConnectionEvent . " +
+				//					//						"?event mc:isAbout ?platform . " +
+				//					//						"?platform mc:runsOn ?infrastructure . " +
+				//					//						"?infrastructure rdf:type mc:Infrastructure . " + 
+				//					//						"?platform rdf:type mc:Platform . " + 
+				//					//						"} " +
+				//					//						"GROUP BY ?platform } " +
+				//					//						"} " +
+				//					//						"} }";
+				//
+				//					String attemptedConnectionsQuery = "REGISTER STREAM "+ attemptedConnectionsQueryName +" AS " +
+				//							"PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> " +
+				//							"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> " +
+				//							"PREFIX mc: <" + MC.getURI() + "> " +
+				//							"CONSTRUCT { [] rdf:type mc:SendAction ; " +
+				//							"mc:hasArgument mc:PlotterObserver ; " +
+				//							"mc:hasArgument [ rdf:type mc:Variable ; " +
+				//							"mc:hasValue ?attemptedConnections ; " +
+				//							"mc:hasMetric mc:AttemptedConnections ; " +
+				//							"mc:hasPlatform ?platform ] . } " +
+				//							"FROM STREAM <" + mySQLCollectorStreamIri + "> [RANGE 10s STEP 10s] " +
+				//							"FROM STREAM <" + CPUViolationQueryStreamIri + "> [RANGE 10s STEP 10s] " +
+				//							"WHERE { { " +
+				//							"SELECT ?attemptedConnections ?platform " +
+				//							"WHERE { " +
+				//							"?action rdf:type mc:EnableAction . " +
+				//							"?action mc:hasArgument mc:AttemptedConnectionsMR . " +
+				//							"{ SELECT (SUM(?value) AS ?attemptedConnections) ?platform " +
+				//							"WHERE { " +
+				//							"?action rdf:type mc:EnableAction . " +
+				//							"?action mc:hasArgument mc:AttemptedConnectionsMR . " +
+				//							"?action mc:hasArgument ?infrastructure . " +
+				//							"?datum rdf:type mc:MonitoringDatum . " +
+				//							"?datum mc:hasMetric mc:AttemptedConnections . " +
+				//							"?datum mc:hasValue ?value . " +
+				//							"?datum mc:isAbout ?platform . " +
+				//							"?platform mc:runsOn ?infrastructure . " +
+				//							"?infrastructure rdf:type mc:Infrastructure . " + 
+				//							"?platform rdf:type mc:Platform . " + 
+				//							"} " +
+				//							"GROUP BY ?platform } " +
+				//							"} " +
+				//							"} }";
+				//
+				//					//				EVENTS:
+				//					//				String throughputQuery = "REGISTER STREAM "+ throughputQueryName +" AS " +
+				//					//						"PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> " +
+				//					//						"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> " +
+				//					//						"PREFIX mc: <" + MC.getURI() + "> " +
+				//					//						"CONSTRUCT { [] rdf:type mc:SendAction ; " +
+				//					//						"mc:hasArgument mc:PlotterObserver ; " +
+				//					//						"mc:hasArgument [ rdf:type mc:Variable ; " +
+				//					//						"mc:hasValue ?throughput ; " +
+				//					//						"mc:hasMetric mc:Throughput ; " +
+				//					//						"mc:hasOperation ?operation ] . } " +
+				//					//						"FROM STREAM <" + ofbizLogCollectorStreamIri + "> [RANGE 10s STEP 10s] " +
+				//					//						"FROM STREAM <" + CPUViolationQueryStreamIri + "> [RANGE 10s STEP 10s] " +
+				//					//						"WHERE { { " +
+				//					//						"SELECT ?throughput ?operation " +
+				//					//						"WHERE { " +
+				//					//						"?action rdf:type mc:EnableAction . " +
+				//					//						"?action mc:hasArgument mc:ThroughputMR . " +
+				//					//						"{ SELECT (COUNT(?request)/10 AS ?throughput) ?operation " +
+				//					//						"WHERE { " +
+				//					//						"?action rdf:type mc:EnableAction . " +
+				//					//						"?action mc:hasArgument mc:ThroughputMR . " +
+				//					//						"?action mc:hasArgument ?infrastructure . " +
+				//					//						"?datum rdf:type mc:SuccessfulRequestEvent . " +
+				//					//						"?datum mc:isAbout ?request . " +
+				//					//						"?request mc:asksFor ?operation . " +
+				//					//						"?operation mc:isProvidedBy ?software . " + 
+				//					//						"?software mc:runsOn ?infrastructure . " + 
+				//					//						"} " +
+				//					//						"GROUP BY ?operation } " +
+				//					//						"} " +
+				//					//						"} }";
+				//
+				//					int throughputTimeWindow = 10;
+				//					String throughputQuery = "REGISTER STREAM "+ throughputQueryName +" AS " +
+				//							"PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> " +
+				//							"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> " +
+				//							"PREFIX mc: <" + MC.getURI() + "> " +
+				//							"CONSTRUCT { [] rdf:type mc:SendAction ; " +
+				//							"mc:hasArgument mc:PlotterObserver ; " +
+				//							"mc:hasArgument [ rdf:type mc:Variable ; " +
+				//							"mc:hasValue ?throughput ; " +
+				//							"mc:hasMetric mc:Throughput ; " +
+				//							"mc:hasOperation ?operation ] . } " +
+				//							"FROM STREAM <" + ofbizLogCollectorStreamIri + "> [RANGE "+throughputTimeWindow+"s STEP 10s] " +
+				//							"FROM STREAM <" + CPUViolationQueryStreamIri + "> [RANGE 10s STEP 10s] " +
+				//							"WHERE { { " +
+				//							"SELECT ?throughput ?operation " +
+				//							"WHERE { " +
+				//							"?action rdf:type mc:EnableAction . " +
+				//							"?action mc:hasArgument mc:ThroughputMR . " +
+				//							"{ SELECT (SUM(?value)/"+throughputTimeWindow+" AS ?throughput) ?operation " +
+				//							"WHERE { " +
+				//							"?action rdf:type mc:EnableAction . " +
+				//							"?action mc:hasArgument mc:ThroughputMR . " +
+				//							"?action mc:hasArgument ?infrastructure . " +
+				//							"?datum rdf:type mc:MonitoringDatum . " +
+				//							"?datum mc:hasValue ?value . " +
+				//							"?datum mc:hasMetric mc:SuccessfulRequests . " +
+				//							"?datum mc:isAbout ?request . " +
+				//							"?request mc:asksFor ?operation . " +
+				//							"?operation mc:isProvidedBy ?software . " + 
+				//							"?software mc:runsOn ?infrastructure . " + 
+				//							"} " +
+				//							"GROUP BY ?operation } " +
+				//							"} " +
+				//							"} }";
+				//
+				//					String plotterObserverDispatcherQuery = "REGISTER STREAM "+ plotterObserverDispatcherQueryName +" AS " +
+				//							"PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> " +
+				//							"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> " +
+				//							"PREFIX mc: <" + MC.getURI() + "> " +
+				//							"PREFIX f: <http://larkc.eu/csparql/sparql/jena/ext#> " +
+				//							"SELECT ?provider ?infrastrucureClass ?infrastructure ?platformClass ?platform " +
+				//							"?softwareClass ?software ?operationClass ?operation ?metric ?value ?timestamp " +
+				//							"FROM STREAM <" + abortedConnectionsQueryStreamIri + "> [RANGE 10s STEP 10s] " +
+				//							"FROM STREAM <" + attemptedConnectionsQueryStreamIri + "> [RANGE 10s STEP 10s] " +
+				//							"FROM STREAM <" + throughputQueryStreamIri + "> [RANGE 10s STEP 10s] " +
+				//							"WHERE { { " +
+				//							"SELECT ?provider ?infrastrucureClass ?infrastructure ?platformClass ?platform " +
+				//							"?softwareClass ?software ?operationClass ?operation ?metric ?value (f:timestamp(?action, mc:hasArgument, ?variable) AS ?timestamp) " +
+				//							"WHERE { " +
+				//							"?action rdf:type mc:SendAction . " +
+				//							"?action mc:hasArgument mc:PlotterObserver . " +
+				//							"?action mc:hasArgument ?variable . " +
+				//							"?variable mc:hasValue ?value . " +
+				//							"?variable mc:hasMetric ?metric . " +
+				//							"OPTIONAL { ?variable mc:hasProvider ?provider } . " +
+				//							"OPTIONAL { ?variable mc:hasInfrastructureClass ?infrastructureClass } . " +
+				//							"OPTIONAL { ?variable mc:hasInfrastructure ?infrastructure } . " +
+				//							"OPTIONAL { ?variable mc:hasPlatformClass ?platformClass } . " +
+				//							"OPTIONAL { ?variable mc:hasPlatform ?platform } . " +
+				//							"OPTIONAL { ?variable mc:hasSoftwareClass ?softwareClass } . " +
+				//							"OPTIONAL { ?variable mc:hasSoftware ?software } . " +
+				//							"OPTIONAL { ?variable mc:hasOperationClass ?operationClass } . " +
+				//							"OPTIONAL { ?variable mc:hasOperation ?operation } " +
+				//							"} " +
+				//							"} } ";
+				//
+				//
+				//					String plotterObserverTunnelQuery = "REGISTER STREAM "+ plotterObserverTunnelQueryName +" AS " +
+				//							"PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> " +
+				//							"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> " +
+				//							"PREFIX mc: <" + MC.getURI() + "> " +
+				//							"PREFIX f: <http://larkc.eu/csparql/sparql/jena/ext#> " +
+				//							"SELECT ?provider ?infrastrucureClass ?infrastructure ?platformClass ?platform " +
+				//							"?softwareClass ?software ?operationClass ?operation ?metric ?value ?timestamp " +
+				//							"FROM STREAM <" + cloudWatchCollectorStreamIri + "> [RANGE 10s STEP 10s] " +
+				//							"WHERE { { " +
+				//							"SELECT ?provider ?infrastrucureClass ?infrastructure ?platformClass ?platform " +
+				//							"?softwareClass ?software ?operationClass ?operation ?metric ?value (f:timestamp(?datum, mc:hasMetric, ?metric) AS ?timestamp) " +
+				//							"WHERE { " +
+				//							"?datum rdf:type mc:MonitoringDatum . " +
+				//							"?datum mc:hasMetric ?metric . " +
+				//							"OPTIONAL { ?datum mc:isAbout ?infrastructure . ?infrastructure rdf:type mc:Infrastructure } . " + //subclassof mc:infrastructure, rdf:type infraClass
+				//							"?datum mc:hasValue ?value . " +
+				//							"} " +
+				//							"} } ";
+				//
+				//					String CPUViolationQueryID = CPUViolationQueryName;
+				//					String abortedConnectionsQueryID = abortedConnectionsQueryName;
+				//					String attemptedConnectionsQueryID = attemptedConnectionsQueryName;
+				//					String throughputQueryID = throughputQueryName;
+				//					String plotterObserverDispatcherQueryID = plotterObserverDispatcherQueryName;
+				//					String plotterObserverTunnelQueryID = plotterObserverTunnelQueryName;
+				//
+				//					if (unregistering){
+				//						System.out.println(csparqlAPI.unregisterStream(cloudWatchCollectorStreamIri));
+				//						System.out.println(csparqlAPI.unregisterStream(mySQLCollectorStreamIri));
+				//						System.out.println(csparqlAPI.unregisterStream(ofbizLogCollectorStreamIri));
+				//						System.out.println(csparqlAPI.unregisterQuery(CPUViolationQueryID));
+				//						System.out.println(csparqlAPI.unregisterQuery(abortedConnectionsQueryID));
+				//						System.out.println(csparqlAPI.unregisterQuery(attemptedConnectionsQueryID));
+				//						System.out.println(csparqlAPI.unregisterQuery(throughputQueryID));
+				//						System.out.println(csparqlAPI.unregisterQuery(plotterObserverDispatcherQueryID));
+				//						System.out.println(csparqlAPI.unregisterQuery(plotterObserverTunnelQueryID));
+				//					}
+				//					if (registering) {
+				//						System.out.println(csparqlAPI.registerStream(cloudWatchCollectorStreamIri));
+				//						System.out.println(csparqlAPI.registerStream(mySQLCollectorStreamIri));
+				//						System.out.println(csparqlAPI.registerStream(ofbizLogCollectorStreamIri));
+				//
+				//
+				//						CPUViolationQueryID = csparqlAPI.registerQuery(CPUViolationQueryName, CPUViolationQuery);
+				//						json_results_list.setStartTS(System.currentTimeMillis());
+				//
+				//						System.out.println(CPUViolationQueryID);
+				//
+				//						abortedConnectionsQueryID = csparqlAPI.registerQuery(abortedConnectionsQueryName, abortedConnectionsQuery);
+				//						json_results_list.setStartTS(System.currentTimeMillis());
+				//
+				//						System.out.println(abortedConnectionsQueryID);
+				//
+				//						Thread.sleep(1000);
+				//
+				//						attemptedConnectionsQueryID = csparqlAPI.registerQuery(attemptedConnectionsQueryName, attemptedConnectionsQuery);
+				//						json_results_list.setStartTS(System.currentTimeMillis());
+				//
+				//						System.out.println(attemptedConnectionsQueryID);
+				//
+				//						Thread.sleep(1000);
+				//
+				//						throughputQueryID = csparqlAPI.registerQuery(throughputQueryName, throughputQuery);
+				//						json_results_list.setStartTS(System.currentTimeMillis());
+				//
+				//						System.out.println(throughputQueryID);
+				//
+				//						Thread.sleep(1000);
+				//
+				//						plotterObserverDispatcherQueryID = csparqlAPI.registerQuery(plotterObserverDispatcherQueryName, plotterObserverDispatcherQuery);
+				//						json_results_list.setStartTS(System.currentTimeMillis());
+				//
+				//						System.out.println(plotterObserverDispatcherQueryID);
+				//
+				//						Thread.sleep(1000);
+				//
+				//						plotterObserverTunnelQueryID = csparqlAPI.registerQuery(plotterObserverTunnelQueryName, plotterObserverTunnelQuery);
+				//						json_results_list.setStartTS(System.currentTimeMillis());
+				//
+				//						System.out.println(plotterObserverTunnelQueryID);
+				//					}
+				//					if (feeding) {
+				//
+				//						String urlToPlotterObserver = "http://localhost:8176/results";
+				//
+				//
+				//						//			csparqlAPI.addObserver(CPUViolationQueryID, urlToPlotterObserver); //test
+				//						//			csparqlAPI.addObserver(abortedConnectionsQueryID, urlToPlotterObserver); //test
+				//						//			csparqlAPI.addObserver(attemptedConnectionsQueryID, urlToPlotterObserver); //test
+				//						//			csparqlAPI.addObserver(throughputQueryID, urlToPlotterObserver); //test
+				//						csparqlAPI.addObserver(plotterObserverDispatcherQueryID, urlToPlotterObserver);
+				//						csparqlAPI.addObserver(plotterObserverTunnelQueryID, urlToPlotterObserver);
+				//
+				//						Client_Server.queryProxyIdTable.put(CPUViolationQuery, CPUViolationQueryID);
+				//						Client_Server.queryProxyIdTable.put(abortedConnectionsQuery, abortedConnectionsQueryID);
+				//						Client_Server.queryProxyIdTable.put(attemptedConnectionsQuery, attemptedConnectionsQueryID);
+				//						Client_Server.queryProxyIdTable.put(throughputQuery, throughputQueryID);
+				//						Client_Server.queryProxyIdTable.put(plotterObserverDispatcherQuery, plotterObserverDispatcherQueryID);
+				//						Client_Server.queryProxyIdTable.put(plotterObserverTunnelQuery, plotterObserverTunnelQueryID);
+				//
+				//
+				//						String urlToAmazonBackEndVM = "http://backend.amazon.com";
+				//						String urlToFlexiBackEndVM = "http://backend.flexi.com";
+				//						String urlToAmazonFrontEndVM = "http://backend.amazon.com";
+				//						String urlToFlexiFrontEndVM = "http://backend.flexi.com";
+				//						String mySQLPort = "8080";
+				//						String OFBizPort = "80";
+				//						String urlToAmazonOfbiz = urlToAmazonFrontEndVM + ":" + OFBizPort;
+				//						String urlToFlexiOfbiz = urlToFlexiFrontEndVM + ":" + OFBizPort;
+				//
+				//						String amazonBackEndVMIRI = urlToAmazonBackEndVM + "/" + MC.AmazonBackEndVM.getLocalName() + "#1";
+				//						String flexiBackEndVMIRI = urlToFlexiBackEndVM + "/" + MC.FlexiBackEndVM.getLocalName() + "#1";
+				//						String amazonFrontEndVMIRI = urlToAmazonFrontEndVM + "/" + MC.AmazonFrontEndVM.getLocalName() + "#1";
+				//						String flexiFrontEndVMIRI = urlToFlexiFrontEndVM + "/" + MC.FlexiFrontEndVM.getLocalName() + "#1";
+				//						String amazonMySQLIRI = urlToAmazonBackEndVM + ":"+mySQLPort+"/" + MC.MySQL.getLocalName() + "#1";
+				//						String flexiMySQLIRI = urlToFlexiBackEndVM + ":"+mySQLPort+"/" + MC.MySQL.getLocalName() + "#1";
+				//						String amazonOFBizIRI = urlToAmazonOfbiz + "/" + MC.OFBiz.getLocalName() + "#1";
+				//						String flexiOFBizIRI = urlToFlexiOfbiz + "/" + MC.OFBiz.getLocalName() + "#1";
+				//						String amazonJVMIRI = urlToAmazonFrontEndVM + "/" + MC.JVM.getLocalName() + "#1";
+				//						String flexiJVMIRI = urlToFlexiFrontEndVM + "/" + MC.JVM.getLocalName() + "#1";
+				//
+				//						long cloudWatchTimeStep = 2000;
+				//						double amazonBackEndMeanCpuValue = 0.9;
+				//						double flexiBackEndMeanCpuValue = 0.5;
+				//						double amazonFrontEndMeanCpuValue = 0.3;
+				//						double flexiFrontEndMeanCpuValue = 0.9;
+				//						new Thread(new CloudWatchCollectorStreamer(csparqlServerAddress, cloudWatchCollectorStreamIri, cloudWatchTimeStep, 
+				//								amazonBackEndVMIRI, amazonMySQLIRI, null, amazonBackEndMeanCpuValue)).start();
+				//						new Thread(new CloudWatchCollectorStreamer(csparqlServerAddress, cloudWatchCollectorStreamIri, cloudWatchTimeStep, 
+				//								flexiBackEndVMIRI, flexiMySQLIRI, null, flexiBackEndMeanCpuValue)).start();
+				//						new Thread(new CloudWatchCollectorStreamer(csparqlServerAddress, cloudWatchCollectorStreamIri, cloudWatchTimeStep, 
+				//								amazonFrontEndVMIRI, null, amazonOFBizIRI, amazonFrontEndMeanCpuValue)).start();
+				//						new Thread(new CloudWatchCollectorStreamer(csparqlServerAddress, cloudWatchCollectorStreamIri, cloudWatchTimeStep, 
+				//								flexiFrontEndVMIRI, flexiOFBizIRI, null, flexiFrontEndMeanCpuValue)).start();
+				//
+				//						int MySQLTimeStep = 2000;
+				//						double amazonMySQLProbFailure = 0.3;
+				//						new Thread(new MySQLAggregatedCollectorStreamer(csparqlServerAddress, mySQLCollectorStreamIri, MC.AmazonBackEndVM, 
+				//								amazonBackEndVMIRI, amazonMySQLIRI, MySQLTimeStep, amazonMySQLProbFailure)).start();
+				//
+				//
+				//						double flexiMySQLProbFailure = 0.2;
+				//						new Thread(new MySQLAggregatedCollectorStreamer(csparqlServerAddress, mySQLCollectorStreamIri, MC.FlexiBackEndVM, 
+				//								flexiBackEndVMIRI, flexiMySQLIRI, MySQLTimeStep, flexiMySQLProbFailure)).start();
+				//
+				//
+				//						int OfbizCollectorTimeStep = 3000;
+				//						new Thread(new OFBizLogAggregatedCollectorStreamer(csparqlServerAddress, ofbizLogCollectorStreamIri, urlToAmazonOfbiz, 
+				//								amazonFrontEndVMIRI, amazonJVMIRI, amazonOFBizIRI, OfbizCollectorTimeStep)).start();
+				//
+				//						new Thread(new OFBizLogAggregatedCollectorStreamer(csparqlServerAddress, ofbizLogCollectorStreamIri, urlToFlexiOfbiz, 
+				//								flexiFrontEndVMIRI, flexiJVMIRI, flexiOFBizIRI, OfbizCollectorTimeStep)).start();
+				//
+				//
+				//
+				//						//			int amazonMySQLMTBConnections = 1000;
+				//						//			int amazonMySQLDeltaMTBConn = 500;
+				//						//			double amazonMySQLProbFailure = 0.3;
+				//						//			new Thread(new MySQLEventsCollectorStreamer(csparqlServerAddress, mySQLCollectorStreamIri, MC.AmazonBackEndVM, 
+				//						//					amazonBackEndVMIRI, amazonMySQLIRI, amazonMySQLMTBConnections, amazonMySQLDeltaMTBConn, amazonMySQLProbFailure)).start();
+				//						//	
+				//						//			
+				//						//			
+				//						//			int flexiMySQLMTBConnections = 1200;
+				//						//			int flexiMySQLDeltaMTBConn = 700;
+				//						//			double flexiMySQLProbFailure = 0.2;
+				//						//			new Thread(new MySQLEventsCollectorStreamer(csparqlServerAddress, mySQLCollectorStreamIri, MC.FlexiBackEndVM, 
+				//						//					flexiBackEndVMIRI, flexiMySQLIRI, flexiMySQLMTBConnections, flexiMySQLDeltaMTBConn, flexiMySQLProbFailure)).start();
+				//						//	
+				//						//			
+				//						//			int amazonOFBizMTBRequests = 300;
+				//						//			int amazonOFBizDeltaMTBReqs = 100;
+				//						//			double amazonOFBizProbFailure = 0.5;
+				//						//			new Thread(new OFBizLogEventsCollectorStreamer(csparqlServerAddress, ofbizLogCollectorStreamIri, urlToAmazonOfbiz, 
+				//						//					amazonFrontEndVMIRI, amazonJVMIRI, amazonOFBizIRI, amazonOFBizMTBRequests, amazonOFBizDeltaMTBReqs, amazonOFBizProbFailure)).start();
+				//						//		
+				//						//			
+				//						//			int flexiOFBizMTBRequests = 200;
+				//						//			int flexiOFBizDeltaMTBReqs = 100;
+				//						//			double flexiOFBizProbFailure = 0.2;
+				//						//			new Thread(new OFBizLogEventsCollectorStreamer(csparqlServerAddress, ofbizLogCollectorStreamIri, urlToFlexiOfbiz, 
+				//						//					flexiFrontEndVMIRI, flexiJVMIRI, flexiOFBizIRI, flexiOFBizMTBRequests, flexiOFBizDeltaMTBReqs, flexiOFBizProbFailure)).start();
+				//
+				//
+				//					}
+				//				} catch (ServerErrorException e) {
+				//					logger.error("rsp_server4csparql_server error", e);
+				//				} catch (InterruptedException e) {
+				//					logger.error("Error while launching the sleep operation", e);
+				//				}
+				//
+				//				break;
 
 			default:
 				System.exit(0);
@@ -978,6 +963,13 @@ public class Client_Server extends Application{
 
 	public static int nextID() {
 		return ID++;
+	}
+
+	private static String extractNewStreamNameFromStreamQuery(String queryURI){	
+		if(csparqlServerAddress.endsWith("/"))
+			return csparqlServerAddress + "streams/" + queryURI.substring(queryURI.lastIndexOf("/") + 1, queryURI.length());
+		else
+			return csparqlServerAddress + "/streams/" + queryURI.substring(queryURI.lastIndexOf("/") + 1, queryURI.length());
 	}
 
 }
