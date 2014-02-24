@@ -66,7 +66,7 @@ public class Client_Server extends Application{
 //		final int COMPLEX_MODACLOUDS_DEMO = 8;
 		
 
-		int key = QUERY_CHAIN;
+		int key = SINGLE_CONSTRUCT_QUERY_SINGLE_OBSERVER;
 
 		String actual_client_address;
 		int actual_client_port;
@@ -172,14 +172,13 @@ public class Client_Server extends Application{
 
 					Client_Server.queryProxyIdTable.put(query, queryURI);
 
-					String obsURI = csparqlAPI.addObserver("HelloWorld", actual_client_address + ":" + actual_client_port + "/results");
+					String obsURI = csparqlAPI.addObserver(queryURI, actual_client_address + ":" + actual_client_port + "/results");
 
 					BaseStreamer bs = new BaseStreamer(csparqlAPI, inputstreamName, 2000, generalIRI);
 					new Thread(bs).start(); 
 
 					System.out.println(csparqlAPI.getStreamInfo(inputstreamName));
 					System.out.println(csparqlAPI.getQueryInfo(queryURI));
-
 
 					Thread.sleep(60000);
 
