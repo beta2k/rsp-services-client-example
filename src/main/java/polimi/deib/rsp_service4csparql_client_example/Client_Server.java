@@ -35,6 +35,7 @@ import polimi.deib.rsp_service4csparql_client_example.streamer.BaseStreamer;
 import polimi.deib.rsp_service4csparql_client_example.streamer.ISWC_DemoStreamer;
 import polimi.deib.rsp_service4csparql_client_example.streamer.Inference_Streamer;
 import polimi.deib.rsp_service4csparql_client_example.streamer.MultiThreadStreamer;
+import polimi.deib.rsp_service4csparql_client_example.streamer.Percentile_Streamer;
 import polimi.deib.rsp_service4csparql_client_example.streamer.Static_Knowledge_Test_Streamer;
 
 public class Client_Server extends Application{
@@ -59,14 +60,16 @@ public class Client_Server extends Application{
 		final int SINGLE_CONSTRUCT_QUERY_SINGLE_OBSERVER = 1;
 		final int QUERY_CHAIN = 2;
 		final int MODACLOUDS_FIRST_DEMO = 3;
-		final int SINGLE_CONSTRUCT_QUERY_SINGLE_OBSERVER_HI_PRESSURE_TEST = 4;
-		final int SPARQL_UDATE = 5;
-		final int RDFS_INFERENCE = 6;
-		final int ISWC_TUTORIAL_DEMO_TRANSITIVE_INFERENCE = 7;
-//		final int COMPLEX_MODACLOUDS_DEMO = 8;
-		
+		final int PERCENTILE = 4;
+		final int SINGLE_CONSTRUCT_QUERY_SINGLE_OBSERVER_HI_PRESSURE_TEST = 5;
+		final int SPARQL_UDATE = 6;
+		final int RDFS_INFERENCE = 7;
+		final int ISWC_TUTORIAL_DEMO_TRANSITIVE_INFERENCE = 8;
+		//		final int COMPLEX_MODACLOUDS_DEMO = 8;
 
-		int key = SINGLE_CONSTRUCT_QUERY_SINGLE_OBSERVER;
+		//REGISTER STREAM ResponseTimeViolation AS PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX mc: <http://ex.org/> PREFIX mr: <http://ex.org/MonitoringRule#> CONSTRUCT { [] rdf:type mc:ViolationEvent ; mc:isGeneratedBy mr:ResponseTimeViolation ; mc:on ?machine ; mc:hasValue ?aggregation . }FROM STREAM <http://ex.org/onlinefeeding> [RANGE 10s STEP 10s] WHERE { { SELECT ?machine (AVG(?value) AS ?aggregation) WHERE { ?datum mc:hasMonitoredMetric ?metric . ?datum mc:isAbout ?resource . ?datum mc:hasValue ?value . ?datum mc:isProcessedBy ?machine . } GROUP BY ?machine HAVING (?aggregation > "3000"^^xsd:integer) } }
+
+		int key = PERCENTILE;
 
 		String actual_client_address;
 		int actual_client_port;
@@ -275,7 +278,57 @@ public class Client_Server extends Application{
 
 					csparqlAPI.addObserver(queryURI, actual_client_address + ":" + actual_client_port + "/results");
 
-					new Thread(new ISWC_DemoStreamer(csparqlAPI, inputstreamName, 2000, generalIRI)).start(); 
+					new Thread(new ISWC_DemoStreamer(csparqlAPI, inputstreamName, 2000, generalIRI)).start();
+
+					Thread.sleep(35000);
+
+					csparqlAPI.unregisterQuery(queryURI);
+
+				} catch (ServerErrorException e) {
+					logger.error("rsp_server4csparql_server error", e);
+				} catch (InterruptedException e) {
+					logger.error("Error while launching the sleep operation", e);
+				}
+
+				break;
+
+			case PERCENTILE:
+
+
+
+				try{
+					inputstreamName = generalIRI + "onlinefeeding";
+
+					csparqlAPI.registerStream(inputstreamName);
+
+					query = "REGISTER QUERY PercentileExample AS "
+							+ "PREFIX ex:     <http://ex.org/> "
+							+ "CONSTRUCT { ?vm ex:violated ex:percentilerule . } "
+							//							+ "SELECT ?vm "
+							+ "FROM STREAM <http://ex.org/onlinefeeding> [RANGE 30s STEP 15s] "
+							+ "WHERE { "
+							+ "{ "
+							+ "SELECT ?vm (PERCENTILE(?resp_time, 0.95) AS ?perc) "
+							+ "WHERE { ?vm ex:response_time ?resp_time } "
+							+ "GROUP BY ?vm "
+							+ "HAVING (?perc > 100) "
+							+ "}}";
+
+
+					queryURI = csparqlAPI.registerQuery("PercentileExample", query);
+					json_results_list.setStartTS(System.currentTimeMillis());
+
+
+					Client_Server.queryProxyIdTable.put(query, queryURI);
+
+					Thread.sleep(3000);
+					csparqlAPI.addObserver(queryURI, actual_client_address + ":" + actual_client_port + "/results");
+
+					new Thread(new Percentile_Streamer(csparqlAPI, inputstreamName, 30000, generalIRI)).start();
+
+					Thread.sleep(120000);
+
+					csparqlAPI.unregisterQuery(queryURI);
 
 				} catch (ServerErrorException e) {
 					logger.error("rsp_server4csparql_server error", e);
@@ -378,15 +431,15 @@ public class Client_Server extends Application{
 					inputstreamName = generalIRI + "onlinefeeding";
 					csparqlAPI.registerStream(inputstreamName);
 
-					//			query = "REGISTER QUERY InferenceTest AS " +
-					//					"PREFIX ex:<http://streamreasoning.org#> " +
-					//					//					"CONSTRUCT { ?s ?p ?o } " +
-					//					"SELECT ?s ?p ?o " +
-					//					"FROM STREAM <" + inputstreamName + "> [RANGE 10s STEP 10s] "	+ 
-					//					"FROM <" + rdfSchemaURL + "> " +
-					//					"WHERE { " +
-					//					"?s ?p ?o " +
-					//					"}";
+//					query = "REGISTER QUERY InferenceTest AS " +
+//							"PREFIX ex:<http://streamreasoning.org#> " +
+//							//					"CONSTRUCT { ?s ?p ?o } " +
+//							"SELECT ?s ?p ?o " +
+//							"FROM STREAM <" + inputstreamName + "> [RANGE 10s STEP 10s] "	+ 
+//							"FROM <" + rdfSchemaURL + "> " +
+//							"WHERE { " +
+//							"?s ?p ?o " +
+//							"}";
 
 					query = "REGISTER QUERY InferenceTest AS " +
 							"PREFIX ex:<http://streamreasoning.org#> " +

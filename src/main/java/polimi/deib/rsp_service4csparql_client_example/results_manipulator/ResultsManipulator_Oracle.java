@@ -50,7 +50,7 @@ public class ResultsManipulator_Oracle  extends ServerResource {
 		String results = new String();
 		try {
 			results = entity.getText();
-
+			System.out.println();
 			//In this example the results manipulator only prints received data on the console
 			try{
 				Model m = ModelFactory.createDefaultModel();

@@ -66,11 +66,11 @@
 		</dependency>
 		-->
 		
-		<dependency>
+		<!-- <dependency>
 			<groupId>polimi.deib</groupId>
 			<artifactId>rsp-services-api</artifactId>
 			<version>0.4</version>
-		</dependency>
+		</dependency> -->
 		
 		<dependency>
 			<groupId>org.slf4j</groupId>
