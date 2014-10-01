@@ -19,7 +19,7 @@
 
 	<groupId>polimi.deib</groupId>
 	<artifactId>rsp-services-client-example</artifactId>
-	<version>0.4</version>
+	<version>0.4.1</version>
 	<packaging>jar</packaging>
 
 	<name>rsp-service4csparql-client-example</name>
@@ -30,12 +30,6 @@
 			<id>maven-restlet</id>
 			<name>Public online Restlet repository</name>
 			<url>http://maven.restlet.org</url>
-		</repository>
-		<repository>
-			<id>streamreasoning_repository</id>
-			<name>Csparql server repository</name>
-			<url>http://streamreasoning.org/maven/</url>
-			<layout>default</layout>
 		</repository>
 	</repositories>
 
@@ -53,25 +47,6 @@
 	</properties>
 
 	<dependencies>
-		<!--  
-		<dependency>
-			<groupId>ch.qos.logback</groupId>
-			<artifactId>logback-core</artifactId>
-			<version>1.0.13</version>
-		</dependency>
-		<dependency>
-			<groupId>ch.qos.logback</groupId>
-			<artifactId>logback-classic</artifactId>
-			<version>1.0.13</version>
-		</dependency>
-		-->
-		
-		<!-- <dependency>
-			<groupId>polimi.deib</groupId>
-			<artifactId>rsp-services-api</artifactId>
-			<version>0.4</version>
-		</dependency> -->
-		
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-log4j12</artifactId>
