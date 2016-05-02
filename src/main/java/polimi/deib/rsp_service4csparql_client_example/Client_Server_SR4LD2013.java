@@ -15,6 +15,9 @@
  ******************************************************************************/
 package polimi.deib.rsp_service4csparql_client_example;
 
+import it.polimi.deib.csparql_rest_api.RSP_services_csparql_API;
+import it.polimi.deib.csparql_rest_api.exception.ServerErrorException;
+
 import java.util.Hashtable;
 
 import org.restlet.Application;
@@ -26,8 +29,6 @@ import org.restlet.routing.Template;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import polimi.deib.csparql_rest_api.RSP_services_csparql_API;
-import polimi.deib.csparql_rest_api.exception.ServerErrorException;
 import polimi.deib.rsp_service4csparql_client_example.configuration.Config;
 import polimi.deib.rsp_service4csparql_client_example.json_dataset_deserialization.utilities.List_of_Sparql_json_results_oracle;
 import polimi.deib.rsp_service4csparql_client_example.results_manipulator.ResultsManipulator_Oracle;

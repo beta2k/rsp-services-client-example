@@ -15,15 +15,16 @@
  ******************************************************************************/
 package polimi.deib.timisoara_demo.streamer;
 
+import it.polimi.deib.csparql_rest_api.RSP_services_csparql_API;
+import it.polimi.deib.csparql_rest_api.exception.ServerErrorException;
+import it.polimi.deib.csparql_rest_api.exception.StreamErrorException;
+
 import java.util.Random;
 import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import polimi.deib.csparql_rest_api.RSP_services_csparql_API;
-import polimi.deib.csparql_rest_api.exception.ServerErrorException;
-import polimi.deib.csparql_rest_api.exception.StreamErrorException;
 import polimi.deib.rsp_service4csparql_client_example.Client_Server;
 import polimi.deib.timisoara_demo.ontology.MC;
 

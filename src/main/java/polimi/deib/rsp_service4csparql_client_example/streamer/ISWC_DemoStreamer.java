@@ -15,6 +15,10 @@
  ******************************************************************************/
 package polimi.deib.rsp_service4csparql_client_example.streamer;
 
+import it.polimi.deib.csparql_rest_api.RSP_services_csparql_API;
+import it.polimi.deib.csparql_rest_api.exception.ServerErrorException;
+import it.polimi.deib.csparql_rest_api.exception.StreamErrorException;
+
 import java.util.Random;
 
 import org.slf4j.Logger;
@@ -25,10 +29,6 @@ import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
 import com.hp.hpl.jena.rdf.model.impl.PropertyImpl;
 import com.hp.hpl.jena.rdf.model.impl.ResourceImpl;
-
-import polimi.deib.csparql_rest_api.RSP_services_csparql_API;
-import polimi.deib.csparql_rest_api.exception.ServerErrorException;
-import polimi.deib.csparql_rest_api.exception.StreamErrorException;
 
 public class ISWC_DemoStreamer implements Runnable {
 

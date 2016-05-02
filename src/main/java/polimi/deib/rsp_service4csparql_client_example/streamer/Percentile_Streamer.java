@@ -15,6 +15,10 @@
  ******************************************************************************/
 package polimi.deib.rsp_service4csparql_client_example.streamer;
 
+import it.polimi.deib.csparql_rest_api.RSP_services_csparql_API;
+import it.polimi.deib.csparql_rest_api.exception.ServerErrorException;
+import it.polimi.deib.csparql_rest_api.exception.StreamErrorException;
+
 import java.io.StringWriter;
 import java.util.Random;
 
@@ -28,10 +32,6 @@ import com.hp.hpl.jena.rdf.model.Property;
 import com.hp.hpl.jena.rdf.model.impl.PropertyImpl;
 import com.hp.hpl.jena.rdf.model.impl.ResourceImpl;
 import com.hp.hpl.jena.util.FileManager;
-
-import polimi.deib.csparql_rest_api.RSP_services_csparql_API;
-import polimi.deib.csparql_rest_api.exception.ServerErrorException;
-import polimi.deib.csparql_rest_api.exception.StreamErrorException;
 
 public class Percentile_Streamer implements Runnable {
 
