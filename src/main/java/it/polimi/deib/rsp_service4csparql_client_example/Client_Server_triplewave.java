@@ -2,11 +2,7 @@ package it.polimi.deib.rsp_service4csparql_client_example;
 
 import it.polimi.deib.csparql_rest_api.RSP_services_csparql_API;
 import it.polimi.deib.csparql_rest_api.exception.ServerErrorException;
-import it.polimi.deib.rsp_service4csparql_client_example.configuration.Config;
-import it.polimi.deib.rsp_service4csparql_client_example.json_dataset_deserialization.utilities.List_of_Sparql_json_results_oracle;
 import it.polimi.deib.rsp_service4csparql_client_example.results_manipulator.ResultsManipulator;
-import it.polimi.deib.rsp_service4csparql_client_example.results_manipulator.ResultsManipulator_Oracle;
-import it.polimi.deib.rsp_service4csparql_client_example.streamer.SR4LD_Streamer;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.log4j.PropertyConfigurator;
 import org.restlet.Application;
@@ -28,8 +24,6 @@ public class Client_Server_triplewave extends Application{
     private static Logger logger = LoggerFactory.getLogger(Client_Server_triplewave.class.getName());
 
     private static int ID = 0;
-
-    private static List_of_Sparql_json_results_oracle json_results_list = new List_of_Sparql_json_results_oracle();
 
 
     public static void main(String[] args) throws Exception{
@@ -102,8 +96,6 @@ public class Client_Server_triplewave extends Application{
                     queryURI = csparqlAPI.registerQuery("topUpdateWiki", query);
                     csparqlAPI.addObserver(queryURI, actual_client_address + ":" + actual_client_port + "/results");
 
-                    new Thread(new SR4LD_Streamer(csparqlAPI)).start();
-
                 } catch (ServerErrorException e) {
                     logger.error("rsp_server4csparql_server error", e);
                 }
@@ -130,8 +122,6 @@ public class Client_Server_triplewave extends Application{
                     queryURI = csparqlAPI.registerQuery("topUserWiki", query);
                     csparqlAPI.addObserver(queryURI, actual_client_address + ":" + actual_client_port + "/results");
 
-                    new Thread(new SR4LD_Streamer(csparqlAPI)).start();
-
                 } catch (ServerErrorException e) {
                     logger.error("rsp_server4csparql_server error", e);
                 }
@@ -156,7 +146,6 @@ public class Client_Server_triplewave extends Application{
     public Restlet createInboundRoot(){
 
         getContext().getAttributes().put("queryProxyIdTable", Client_Server_triplewave.queryProxyIdTable);
-        getContext().getAttributes().put("json_results_list", Client_Server_triplewave.json_results_list);
 
         Router router = new Router(getContext());
         router.setDefaultMatchingMode(Template.MODE_EQUALS);

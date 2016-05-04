@@ -48,8 +48,6 @@ public class ResultsManipulator  extends ServerResource {
 				m.write(System.out);
 			} catch(Exception e){
 				System.out.println(results);
-//				Sparql_json_results deserialized_results = gson.fromJson(results, Sparql_json_results.class);
-//				deserialized_results.printSerializationOnConsole();
 			}
 			
 			this.getResponse().setStatus(Status.SUCCESS_OK, "Result succesfully received");
