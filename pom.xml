@@ -105,7 +105,7 @@
         <dependency>
             <groupId>it.polimi.deib</groupId>
             <artifactId>rsp-services-api</artifactId>
-            <version>0.4.6</version>
+            <version>0.5-SNAPSHOT</version>
         </dependency>
 	</dependencies>
 
@@ -125,7 +125,7 @@
 				<configuration>
 					<archive>
 						<manifest>
-							<mainClass>polimi.deib.csparql_client_example.Client_Server</mainClass>
+							<mainClass>it.polimi.deib.rsp_service4csparql_client_example.Client_Server_triplewave</mainClass>
 						</manifest>
 					</archive>
 					<descriptorRefs>
@@ -142,6 +142,40 @@
 					</execution>
 				</executions>
 			</plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>2.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                            <overWriteReleases>false</overWriteReleases>
+                            <overWriteSnapshots>false</overWriteSnapshots>
+                            <overWriteIfNewer>true</overWriteIfNewer>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.0.0</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
 		</plugins>
 	</build>
 </project>
