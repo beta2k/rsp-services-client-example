@@ -33,12 +33,16 @@ public class Client_Server_triplewave extends Application{
 
         String propertiesFilePath;
 
-        PropertyConfigurator.configure(new URL("http://streamreasoning.org/configuration_files/rspCsparql/log4j.properties"));
+        try{
+            PropertyConfigurator.configure(new URL("http://streamreasoning.org/configuration_files/rspCsparql/log4j.properties"));
+        } catch(Exception e){
+            PropertyConfigurator.configure("config/log4j.properties");
+        }
 
         if(args.length > 0){
             propertiesFilePath = args[0];
         } else {
-            propertiesFilePath = "http://streamreasoning.org/configuration_files/rspCsparql/setup.properties";
+            propertiesFilePath = "config/config.properties";
         }
 
         PropertiesConfiguration config = new PropertiesConfiguration(propertiesFilePath);
